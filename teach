@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Three.js 交互式编程实验室 · 实验 1：理解三维变换</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<style>
+:root{
+  --p50:#EEEDFE; --p200:#AFA9EC; --p600:#534AB7; --p800:#3C3489;
+  --a50:#FAEEDA; --a200:#FAC775; --a600:#854F0B; --a800:#633806;
+  --g50:#F1EFE8; --g100:#E7E5DD; --g200:#D3D1C7; --g400:#888780; --g600:#5F5E5A; --g800:#444441;
+  --b50:#E6F1FB; --b200:#85B7EB; --b600:#185FA5; --b800:#0C447C;
+  --r600:#A32D2D; --gr600:#3B6D11;
+  --line:0.5px solid var(--g200);
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+body{font-family:"PingFang SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif;background:#FAFAF7;color:var(--g800);font-size:13px;line-height:1.6}
+.app{max-width:1320px;margin:0 auto;padding:20px 16px 32px}
+.topbar{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:16px}
+h1{font-size:17px;font-weight:500}
+.sub{font-size:12px;color:var(--g600);margin-top:2px}
+.badge{background:var(--p50);color:var(--p800);border:0.5px solid var(--p200);border-radius:999px;padding:4px 12px;font-size:11px;white-space:nowrap}
+.layout{display:grid;grid-template-columns:360px minmax(0,1fr) 340px;gap:12px;align-items:start}
+.col-right{display:flex;flex-direction:column;gap:12px}
+.panel{background:#fff;border:var(--line);border-radius:12px;padding:14px 16px;transition:border-color .3s}
+.panel.attention{border-color:var(--a200)}
+.panel-head{display:flex;align-items:flex-start;gap:10px;margin-bottom:12px}
+.panel-head h2{font-size:13px;font-weight:500}
+.q{font-size:11px;color:var(--g400)}
+.chip{flex:none;width:20px;height:20px;border-radius:6px;background:var(--p600);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.panel-head .switch{margin-left:auto;margin-top:2px}
+.switch{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--g600);cursor:pointer;user-select:none;white-space:nowrap}
+.switch input{accent-color:var(--p600)}
+.btn{font:inherit;font-size:11px;padding:4px 12px;border-radius:999px;border:0.5px solid var(--g200);background:#fff;color:var(--g800);cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--g400)}
+.btn-primary{background:var(--p600);border-color:var(--p600);color:#fff}
+.btn-primary:hover{background:var(--p800)}
+.CodeMirror{height:318px;border:0.5px solid var(--g200);border-radius:8px;font-family:var(--mono);font-size:12.5px;line-height:1.6;color:var(--g800)}
+.cm-s-default .cm-comment{color:#98968F}
+.cm-todo{background:var(--a50)!important}
+#code-plain{width:100%;height:318px;border:0.5px solid var(--g200);border-radius:8px;font-family:var(--mono);font-size:12.5px;line-height:1.6;padding:10px;color:var(--g800);resize:none}
+.code-foot{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:11px;color:var(--g400)}
+.tasks{margin-top:14px;border-top:var(--line);padding-top:12px}
+.tasks-title{font-size:11px;color:var(--g400);margin-bottom:6px}
+.task{display:flex;align-items:flex-start;gap:8px;font-size:12px;padding:4px 0}
+.task input{margin-top:3px;accent-color:var(--p600)}
+.task.done span{color:var(--g400);text-decoration:line-through}
+.task details{margin:2px 0 6px 24px}
+.task summary{font-size:11px;color:var(--b600);cursor:pointer;list-style:none}
+.task summary::-webkit-details-marker{display:none}
+.task summary::before{content:"› ";font-weight:500}
+.hint-body{font-size:11px;color:var(--g600);background:var(--g50);border-radius:8px;padding:8px 10px;margin-top:6px;line-height:1.7}
+#scene{position:relative;height:440px;border-radius:8px;overflow:hidden;background:#fff;border:var(--line)}
+#scene canvas{display:block;touch-action:none}
+.scene-cap{font-size:11px;color:var(--g400);margin-top:10px;line-height:1.7}
+.graduate{margin-top:12px;background:var(--p50);border:0.5px solid var(--p200);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--p800);line-height:1.7}
+.param-row{display:flex;justify-content:space-between;align-items:baseline;padding:7px 0;border-bottom:var(--line)}
+.param-key{color:var(--g600);font-family:var(--mono);font-size:11.5px}
+.param-val{font-family:var(--mono);color:var(--g800);font-size:12px}
+.param-note{font-size:11px;color:var(--g400);padding:8px 0 2px;line-height:1.7}
+.predict-bar{background:var(--a50);border:0.5px solid var(--a200);border-radius:10px;padding:10px 12px;margin-bottom:12px}
+.predict-label{font-size:12px;font-weight:500;color:var(--a800);margin-bottom:8px}
+.predict-row{display:flex;gap:8px}
+.predict-row input{flex:1;min-width:0;font:inherit;font-size:12px;padding:5px 12px;border:0.5px solid var(--a200);border-radius:999px;background:#fff;color:var(--g800)}
+.predict-row input:focus{outline:none;border-color:var(--a600)}
+.toast{background:var(--b50);border:0.5px solid var(--b200);color:var(--b800);border-radius:8px;padding:8px 10px;font-size:11px;margin-bottom:10px;line-height:1.6}
+.ex-block{background:var(--g50);border-radius:10px;padding:10px 12px;margin-bottom:12px}
+.ex-label{font-size:11px;color:var(--g400);margin-bottom:4px}
+.ex-quote{font-size:12px;color:var(--g800);margin-bottom:10px}
+.ex-diff{font-size:12px;font-family:var(--mono);color:var(--g800);line-height:1.8}
+.ex-nudge{font-size:11px;color:var(--a800);margin-top:8px}
+.ex-item{border-left:2px solid var(--p200);padding:2px 0 2px 12px;margin-bottom:14px}
+.ex-item .ex-title{font-size:12.5px;font-weight:500;color:var(--p800);margin-bottom:3px}
+.ex-item .ex-body{font-size:12px;color:var(--g800);line-height:1.75}
+.ex-item .ex-body strong{font-weight:500;color:var(--p800)}
+.ex-item.ex-error{border-left-color:#E24B4A}
+.ex-item.ex-error .ex-title{color:var(--r600)}
+.ex-item.ex-warn{border-left-color:var(--a200)}
+.ex-item.ex-warn .ex-title{color:var(--a800)}
+.ex-item.ex-info{border-left-color:var(--b200)}
+.ex-item.ex-info .ex-title{color:var(--b800)}
+.footbar{margin-top:16px;font-size:11px;color:var(--g400);text-align:center;line-height:1.7}
+.fallback{position:fixed;inset:0;background:rgba(250,250,247,.96);display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font-size:14px;color:var(--g800);line-height:1.8}
+@media (max-width:1100px){.layout{grid-template-columns:1fr}#scene{height:380px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div>
+      <h1>Three.js 交互式编程实验室</h1>
+      <p class="sub">写代码 → 看变化 → 理解原理。第一版只做一件事：理解三维物体的位置、旋转和缩放。</p>
+    </div>
+    <span class="badge">实验 1 · 理解三维变换</span>
+  </header>
+
+  <div class="layout">
+    <section class="panel" id="panel-code">
+      <div class="panel-head">
+        <span class="chip">1</span>
+        <div><h2>代码区</h2><p class="q">我能控制什么？</p></div>
+      </div>
+      <textarea id="code-plain">// 场景已经搭好，这些对象可以直接使用：
+//   cube   你的立方体
+//   scene  场景
+//   camera 相机
+//   THREE  Three.js 库
+
+// 只修改这一行：把 0 改成 3，先预测，再看结果
+cube.position.x = 0;   // TODO
+
+// 左侧任务清单有三个小任务，全部完成即「毕业」</textarea>
+      <div class="code-foot">
+        <span id="save-status" style="color:#5F5E5A">进度保存：本地存储</span>
+        <span>Ctrl+Enter 立即运行</span>
+        <button class="btn" id="reset-btn">重置场景</button>
+      </div>
+      <div class="tasks">
+        <div class="tasks-title">本实验任务 · 完成即可毕业</div>
+        <label class="task" id="task-0"><input type="checkbox" id="task-cb-0" disabled><span>把立方体移动到 (3, 0, 0)</span></label>
+        <details><summary>提示</summary><div class="hint-body">position.x 控制 X 方向。写成 cube.position.x = 3; 立方体会沿红色 X 轴正方向移动 3 格，y 和 z 保持 0 即可。</div></details>
+        <label class="task" id="task-1"><input type="checkbox" id="task-cb-1" disabled><span>让立方体绕 Y 轴旋转 90°</span></label>
+        <details><summary>提示</summary><div class="hint-body">rotation 使用弧度制：90° 对应 Math.PI / 2。写 cube.rotation.y = Math.PI / 2;，然后观察局部坐标轴怎么转动。</div></details>
+        <label class="task" id="task-2"><input type="checkbox" id="task-cb-2" disabled><span>把立方体缩放成 (2, 1, 1)</span></label>
+        <details><summary>提示</summary><div class="hint-body">scale 有三个分量，用 cube.scale.set(2, 1, 1); 表示 X 方向放大 2 倍，Y、Z 不变。</div></details>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-scene">
+      <div class="panel-head">
+        <span class="chip">2</span>
+        <div><h2>三维场景区</h2><p class="q">代码产生了什么效果？</p></div>
+        <label class="switch"><input type="checkbox" id="local-axes" checked> 局部坐标轴</label>
+      </div>
+      <div id="scene"></div>
+      <p class="scene-cap">世界坐标轴常显：红 X · 绿 Y · 蓝 Z；立方体上的亮色短轴是它自己的局部坐标轴。拖动旋转视角，滚轮缩放。</p>
+      <div class="graduate" id="graduate" hidden><strong>已毕业。</strong>三个任务全部完成。最后一步：不看任何提示，向自己解释这三行代码——position、rotation、scale 分别对立方体做了什么、为什么。解释清楚，你就可以离开这个实验了。</div>
+    </section>
+
+    <aside class="col-right">
+      <section class="panel" id="panel-param">
+        <div class="panel-head">
+          <span class="chip">3</span>
+          <div><h2>参数观察区</h2><p class="q">模型当前处于什么状态？</p></div>
+        </div>
+        <div class="param-row"><span class="param-key">position</span><span class="param-val" id="v-pos">(0, 0, 0)</span></div>
+        <div class="param-row"><span class="param-key">rotation</span><span class="param-val" id="v-rot">(0°, 0°, 0°)</span></div>
+        <div class="param-note" id="v-rad">弧度制存储：x 0 · y 0 · z 0 rad</div>
+        <div class="param-row" style="border-bottom:none"><span class="param-key">scale</span><span class="param-val" id="v-scale">(1, 1, 1)</span></div>
+      </section>
+
+      <section class="panel" id="panel-explain">
+        <div class="panel-head">
+          <span class="chip">4</span>
+          <div><h2>原理解释区</h2><p class="q">为什么会产生这种效果？</p></div>
+          <label class="switch"><input type="checkbox" id="predict-mode" checked> 预测模式</label>
+        </div>
+        <div class="toast" id="toast" hidden></div>
+        <div class="predict-bar" id="predict-bar" hidden>
+          <div class="predict-label">先预测：运行后，立方体会怎么变？</div>
+          <div class="predict-row">
+            <input id="predict-input" type="text" placeholder="例如：立方体会向右移动 3 格">
+            <button class="btn btn-primary" id="predict-ok">看结果</button>
+            <button class="btn" id="predict-skip">跳过</button>
+          </div>
+        </div>
+        <div id="explain-body"></div>
+      </section>
+    </aside>
+  </div>
+
+  <footer class="footbar">毕业标准：不看提示完成 3 个小任务——移动到指定位置 · 旋转 90° · 拉扁，并能向自己解释每行代码为什么会产生这些变化。</footer>
+</div>
+
+<div class="fallback" id="scene-fallback" hidden>无法加载 Three.js（CDN 被拦截或网络不通）。<br>请联网后刷新页面——代码编辑、解释和任务逻辑不依赖它，但三维场景需要它。</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script>
+(function () {
+  'use strict';
+  function $(id) { return document.getElementById(id); }
+
+  var scene, camera, renderer, cube, worldAxes, localAxes;
+  var cam = { theta: 0.694, phi: 1.20, r: 8.4 };
+  var dragging = false, lastX = 0, lastY = 0;
+  var editor = null;
+  var debounceTimer = null;
+  var predictionMode = true;
+  var barVisible = false;
+  var lastPrediction = '';
+  var graduated = false;
+  var taskState = [false, false, false];
+  var readoutCache = {};
+  var toastTimer = null;
+  var restoring = false;
+  var EXPERIMENT_ID = 'transform-1';
+  var LOOP_RE = /\b(while|for)\s*\(|\bdo\s*\{/;
+
+  // 存储层：当前为本地实现（localStorage）。切到云数据库时只需把这三个方法
+  // 换成 cloud.database 调用即可——记录结构已按 lab_progress / lab_trials 两张表设计。
+  var Store = (function () {
+    var KEY_PROGRESS = 'lab_progress_v1';
+    var KEY_TRIALS = 'lab_trials_v1';
+    var KEY_DEVICE = 'lab_device_id';
+    function deviceId() {
+      var id = null;
+      try { id = localStorage.getItem(KEY_DEVICE); } catch (e) { }
+      if (!id) {
+        id = 'dev_' + (window.crypto && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
+        try { localStorage.setItem(KEY_DEVICE, id); } catch (e) { }
+      }
+      return id;
+    }
+    function readArr(key) { try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { return []; } }
+    function writeArr(key, arr) { try { localStorage.setItem(key, JSON.stringify(arr)); return true; } catch (e) { return false; } }
+    return {
+      deviceId: deviceId,
+      getProgress: function (experimentId) {
+        var rows = readArr(KEY_PROGRESS);
+        for (var i = 0; i < rows.length; i++) {
+          if (rows[i].device_id === deviceId() && rows[i].experiment_id === experimentId) return rows[i];
+        }
+        return null;
+      },
+      saveProgress: function (row) {
+        var rows = readArr(KEY_PROGRESS), found = false;
+        for (var i = 0; i < rows.length; i++) {
+          if (rows[i].device_id === row.device_id && rows[i].experiment_id === row.experiment_id) { rows[i] = row; found = true; break; }
+        }
+        if (!found) rows.push(row);
+        if (!writeArr(KEY_PROGRESS, rows)) throw new Error('存储不可用');
+        return row;
+      },
+      logTrial: function (row) {
+        var rows = readArr(KEY_TRIALS);
+        rows.push(row);
+        if (rows.length > 500) rows = rows.slice(-500);
+        writeArr(KEY_TRIALS, rows);
+      },
+      trialCount: function () {
+        var rows = readArr(KEY_TRIALS), n = 0;
+        for (var i = 0; i < rows.length; i++) if (rows[i].device_id === deviceId()) n++;
+        return n;
+      }
+    };
+  })();
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function fmt(n) {
+    if (typeof n !== 'number' || !isFinite(n)) return 'NaN';
+    var s = n.toFixed(2);
+    if (s.indexOf('.') !== -1) s = s.replace(/0+$/, '').replace(/\.$/, '');
+    if (s === '-0' || s === '') s = '0';
+    return s;
+  }
+  function fmtDeg(n) {
+    if (typeof n !== 'number' || !isFinite(n)) return 'NaN';
+    return fmt(n * 180 / Math.PI) + '°';
+  }
+
+  function initScene() {
+    var container = $('scene');
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xFFFFFF);
+    camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    container.appendChild(renderer.domElement);
+
+    scene.add(new THREE.AmbientLight(0xFFFFFF, 0.55));
+    var dir = new THREE.DirectionalLight(0xFFFFFF, 0.85); dir.position.set(5, 8, 6); scene.add(dir);
+    var dir2 = new THREE.DirectionalLight(0xFFFFFF, 0.25); dir2.position.set(-6, 4, -5); scene.add(dir2);
+
+    var grid = new THREE.GridHelper(10, 10, 0xB4B2A9, 0xD3D1C7);
+    scene.add(grid);
+
+    worldAxes = new THREE.AxesHelper(5);
+    worldAxes.position.y = 0.002;
+    scene.add(worldAxes);
+
+    cube = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshStandardMaterial({ color: 0x378ADD, roughness: 0.45, metalness: 0.05 })
+    );
+    scene.add(cube);
+
+    localAxes = new THREE.AxesHelper(1.3);
+    localAxes.position.y = 0.002;
+    cube.add(localAxes);
+
+    resize();
+    window.addEventListener('resize', resize);
+    bindOrbit(renderer.domElement);
+    updateCamera();
+    animate();
+  }
+
+  function resize() {
+    var container = $('scene');
+    var w = container.clientWidth, h = container.clientHeight;
+    if (!w || !h) return;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  }
+
+  function updateCamera() {
+    var sp = Math.sin(cam.phi), cp = Math.cos(cam.phi);
+    camera.position.set(
+      cam.r * sp * Math.sin(cam.theta),
+      cam.r * cp,
+      cam.r * sp * Math.cos(cam.theta)
+    );
+    camera.lookAt(0, 0, 0);
+  }
+
+  function bindOrbit(el) {
+    el.addEventListener('pointerdown', function (e) {
+      dragging = true; lastX = e.clientX; lastY = e.clientY;
+      if (el.setPointerCapture) el.setPointerCapture(e.pointerId);
+    });
+    el.addEventListener('pointermove', function (e) {
+      if (!dragging) return;
+      var dx = e.clientX - lastX, dy = e.clientY - lastY;
+      lastX = e.clientX; lastY = e.clientY;
+      cam.theta -= dx * 0.008;
+      cam.phi = Math.max(0.15, Math.min(1.45, cam.phi - dy * 0.008));
+      updateCamera();
+    });
+    el.addEventListener('pointerup', function () { dragging = false; });
+    el.addEventListener('pointercancel', function () { dragging = false; });
+    el.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      cam.r = Math.max(3.5, Math.min(20, cam.r * (1 + e.deltaY * 0.001)));
+      updateCamera();
+    }, { passive: false });
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    renderer.render(scene, camera);
+    if (!cube.parent) scene.add(cube);
+    updateReadout();
+  }
+
+  function setText(id, value) {
+    if (readoutCache[id] !== value) { readoutCache[id] = value; $(id).textContent = value; }
+  }
+
+  function snapshot() {
+    var p = cube.position, r = cube.rotation, s = cube.scale;
+    return {
+      px: p.x, py: p.y, pz: p.z,
+      rx: r.x, ry: r.y, rz: r.z,
+      sx: s.x, sy: s.y, sz: s.z,
+      posValid: cube.position instanceof THREE.Vector3
+    };
+  }
+
+  function updateReadout() {
+    var p = cube.position, r = cube.rotation, s = cube.scale;
+    setText('v-pos', '(' + fmt(p.x) + ', ' + fmt(p.y) + ', ' + fmt(p.z) + ')');
+    setText('v-rot', '(' + fmtDeg(r.x) + ', ' + fmtDeg(r.y) + ', ' + fmtDeg(r.z) + ')');
+    setText('v-rad', '弧度制存储：x ' + fmt(r.x) + ' · y ' + fmt(r.y) + ' · z ' + fmt(r.z) + ' rad');
+    setText('v-scale', '(' + fmt(s.x) + ', ' + fmt(s.y) + ', ' + fmt(s.z) + ')');
+    checkTasks();
+  }
+
+  function angleClose(a, target) {
+    if (typeof a !== 'number' || !isFinite(a)) return false;
+    var d = ((a - target) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+    return d < 0.01 || (Math.PI * 2 - d) < 0.01;
+  }
+
+  function checkTasks() {
+    var p = cube.position, r = cube.rotation, s = cube.scale;
+    var ok = [
+      Math.abs(p.x - 3) < 0.01 && Math.abs(p.y) < 0.01 && Math.abs(p.z) < 0.01,
+      angleClose(r.y, Math.PI / 2),
+      Math.abs(s.x - 2) < 0.01 && Math.abs(s.y - 1) < 0.01 && Math.abs(s.z - 1) < 0.01
+    ];
+    for (var i = 0; i < 3; i++) {
+      if (ok[i] !== taskState[i]) {
+        taskState[i] = ok[i];
+        $('task-cb-' + i).checked = ok[i];
+        $('task-' + i).classList.toggle('done', ok[i]);
+      }
+    }
+    if (ok[0] && ok[1] && ok[2] && !graduated) {
+      graduated = true;
+      $('graduate').hidden = false;
+    }
+  }
+
+  function getCode() {
+    return editor ? editor.getValue() : $('code-plain').value;
+  }
+
+  function highlightTodo() {
+    if (!editor) return;
+    var n = editor.lineCount();
+    for (var i = 0; i < n; i++) {
+      var has = editor.getLine(i).indexOf('TODO') !== -1;
+      if (has) editor.addLineClass(i, 'background', 'cm-todo');
+      else editor.removeLineClass(i, 'background', 'cm-todo');
+    }
+  }
+
+  function initEditor() {
+    if (window.CodeMirror) {
+      editor = CodeMirror.fromTextArea($('code-plain'), {
+        mode: 'javascript',
+        lineNumbers: true,
+        indentUnit: 2,
+        tabSize: 2,
+        matchBrackets: true,
+        extraKeys: {
+          'Ctrl-Enter': function () { barVisible ? submitPrediction() : runNow(); },
+          'Cmd-Enter': function () { barVisible ? submitPrediction() : runNow(); }
+        }
+      });
+      editor.on('change', onCodeChange);
+    } else {
+      $('code-plain').addEventListener('input', onCodeChange);
+    }
+    highlightTodo();
+  }
+
+  function onCodeChange() {
+    highlightTodo();
+    if (restoring) return;
+    if (predictionMode) {
+      showBar();
+    } else {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(runNow, 400);
+    }
+  }
+
+  function showBar() {
+    if (!barVisible) {
+      barVisible = true;
+      $('predict-bar').hidden = false;
+      var panel = $('panel-explain');
+      panel.classList.add('attention');
+      setTimeout(function () { panel.classList.remove('attention'); }, 1200);
+      $('predict-input').focus();
+    }
+  }
+
+  function submitPrediction() {
+    lastPrediction = $('predict-input').value.trim();
+    barVisible = false;
+    $('predict-bar').hidden = true;
+    runNow();
+  }
+
+  function skipPrediction() {
+    lastPrediction = '';
+    $('predict-input').value = '';
+    barVisible = false;
+    $('predict-bar').hidden = true;
+    runNow();
+  }
+
+  function runUserCode(code) {
+    if (!window.THREE) return { ok: false, error: { name: 'Error', message: 'Three.js 未加载，无法运行代码。' } };
+    if (LOOP_RE.test(code)) return { ok: false, loop: true };
+    try {
+      var fn = new Function('cube', 'scene', 'camera', 'THREE', code);
+      fn(cube, scene, camera, THREE);
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e };
+    }
+  }
+
+  function runNow() {
+    var before = snapshot();
+    var result = runUserCode(getCode());
+    var after = snapshot();
+    renderOutcome(before, after, result, lastPrediction, false);
+    persist(result, before, after, lastPrediction);
+  }
+
+  function hhmm(d) {
+    return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+  }
+  function setSaveStatus(text) {
+    $('save-status').textContent = '进度保存：' + text;
+  }
+  function persist(result, before, after, prediction) {
+    try {
+      Store.saveProgress({
+        device_id: Store.deviceId(),
+        experiment_id: EXPERIMENT_ID,
+        code: getCode(),
+        task_states: JSON.stringify(taskState),
+        graduated: graduated,
+        updated_at: new Date().toISOString()
+      });
+      Store.logTrial({
+        device_id: Store.deviceId(),
+        experiment_id: EXPERIMENT_ID,
+        prediction: prediction || null,
+        diff: diffText(before, after).replace(/<br>/g, '；').replace(/<[^>]+>/g, ''),
+        kind: result.ok ? 'run' : (result.loop ? 'loop' : 'error'),
+        created_at: new Date().toISOString()
+      });
+      setSaveStatus('已保存 · ' + hhmm(new Date()));
+    } catch (e) {
+      setSaveStatus('失败：' + (e && e.message ? e.message : '存储不可用'));
+    }
+  }
+
+  function numEq(a, b) {
+    var na = typeof a === 'number' && isFinite(a), nb = typeof b === 'number' && isFinite(b);
+    if (!na && !nb) return true;
+    if (na !== nb) return false;
+    return Math.abs(a - b) < 1e-6;
+  }
+
+  function fmtKey(k, v) {
+    if (k.charAt(0) === 'r') return fmt(v) + ' rad（' + fmtDeg(v) + '）';
+    return fmt(v);
+  }
+
+  function diffText(before, after) {
+    var keys = [['px', 'position.x'], ['py', 'position.y'], ['pz', 'position.z'],
+      ['rx', 'rotation.x'], ['ry', 'rotation.y'], ['rz', 'rotation.z'],
+      ['sx', 'scale.x'], ['sy', 'scale.y'], ['sz', 'scale.z']];
+    var parts = [];
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i][0];
+      if (!numEq(before[k], after[k])) {
+        parts.push(keys[i][1] + '：' + fmtKey(k, before[k]) + ' → ' + fmtKey(k, after[k]));
+      }
+    }
+    if (!parts.length) return '数值没有变化——检查一下 TODO 那一行是否真的被修改了。';
+    return parts.join('<br>');
+  }
+
+  function hasNaN(s) {
+    return !isFinite(s.px) || !isFinite(s.py) || !isFinite(s.pz) ||
+      !isFinite(s.rx) || !isFinite(s.ry) || !isFinite(s.rz) ||
+      !isFinite(s.sx) || !isFinite(s.sy) || !isFinite(s.sz);
+  }
+
+  function itemHtml(it) {
+    return '<div class="ex-item ex-' + it.kind + '">' +
+      '<div class="ex-title">' + it.title + '</div>' +
+      '<div class="ex-body">' + it.body + '</div></div>';
+  }
+
+  function buildExplanations(code, after, result) {
+    var items = [];
+    if (!result.ok) {
+      if (result.loop) {
+        items.push({ title: '循环先等等', kind: 'warn', body: '这一版还不支持循环代码（while / for / do）：同步死循环会把整个页面卡死，而且没有恢复办法。循环和动画是下一个实验的主题——现在先用直接的赋值语句做变换，比如 cube.position.x = 3。' });
+        return items;
+      }
+      items.push({ title: '代码出错了', body: errorExplain(result.error), kind: 'error' });
+      return items;
+    }
+    var touchedPos = /position/.test(code);
+    var touchedRot = /rotation/.test(code);
+    var touchedScale = /scale/.test(code);
+    var touchedMat = /material|color|roughness|metalness|emissive/.test(code);
+    var touchedCam = /camera/.test(code);
+    var touchedLight = /Light/.test(code);
+    if (touchedPos) items.push({ title: 'position：物体相对父坐标系的位置', kind: 'info', body:
+      '<strong>position</strong> 是物体<strong>原点相对于父坐标系</strong>的偏移。立方体没有父对象时，父坐标系就是世界坐标系——网格中心就是 (0, 0, 0)。当前 x = ' + fmt(after.px) + '，表示沿红色 X 轴正方向移动 ' + fmt(after.px) + ' 个单位，1 个单位 = 1 格网格。改成 -3 就会沿反方向移动。' });
+    if (touchedRot) items.push({ title: 'rotation：弧度制下的旋转', kind: 'info', body:
+      '<strong>rotation</strong> 使用<strong>弧度</strong>而不是角度：Math.PI ≈ 3.14 对应 180°，Math.PI / 2 就是 90°。当前 rotation.y = ' + fmt(after.ry) + ' rad ≈ ' + fmtDeg(after.ry) + '。旋转绕物体自身的局部轴进行——打开「局部坐标轴」，看绿轴如何原地转动，而位置数值没有变化。' });
+    if (touchedScale) items.push({ title: 'scale：以物体自身原点为中心的缩放', kind: 'info', body:
+      '<strong>scale</strong> 是三个方向上的缩放倍数。(' + fmt(after.sx) + ', ' + fmt(after.sy) + ', ' + fmt(after.sz) + ') 表示 X 方向变成 ' + fmt(after.sx) + ' 倍宽，Y、Z 分别为 ' + fmt(after.sy) + ' 和 ' + fmt(after.sz) + ' 倍。缩放绕物体自身原点生效，所以立方体会朝一侧「长出去」。位置坐标不受缩放影响。' });
+    if (touchedMat) items.push({ title: '材质：颜色只是基础色', kind: 'info', body:
+      'material.color 只是基础色，最终颜色 = 基础色 × 光照。roughness 越低，高光越集中、表面越亮；越高，高光越分散、表面越哑光。换一个参数，观察高光区域的变化，比记住 API 名字更重要。' });
+    if (touchedLight) items.push({ title: '光照：没有光，材质什么都不是', kind: 'info', body:
+      'MeshStandardMaterial 的颜色由光照决定。你添加或修改了光源——试试关掉环境光只留方向光，观察立方体背面变暗的过程，这就是「光照模型」最直观的样子。' });
+    if (touchedCam) items.push({ title: '相机：你看到的「方向」由相机决定', kind: 'info', body:
+      '你修改了相机。注意：屏幕上的「右」由相机决定，不是世界固有方向。世界坐标轴（红 X / 绿 Y / 蓝 Z）是客观参照——拖动旋转视角时它们不动，动的只是相机。场景是客观的，画面是视角的，这是理解 Three.js 的关键一环。' });
+    if (!touchedPos && !touchedRot && !touchedScale && !touchedMat && !touchedCam && !touchedLight) {
+      items.push({ title: '现在，立方体还在原点', kind: 'info', body:
+        '立方体位于 (0, 0, 0)，没有任何变换。把 TODO 那一行的 0 改成 3，先预测会发生什么，再点「看结果」——然后试着向自己解释为什么。' });
+    }
+    if (after.posValid === false) {
+      items.push({ title: 'position 被整个替换掉了', kind: 'warn', body:
+        'Object3D 的 position 必须是一个 Vector3 对象，直接赋字符串或数字会破坏它，之后所有位置计算都会失效。正确做法是修改分量：cube.position.x = 3。' });
+    } else if (hasNaN(after)) {
+      items.push({ title: '坐标变成了 NaN', kind: 'warn', body:
+        '有坐标变成了 NaN（非数字）。常见原因：把字符串赋给了坐标分量（"3" 而不是 3），或者用未定义的变量做运算。NaN 会传染——一旦出现，物体就会停在无效位置。' });
+    } else if (Math.abs(after.ry) > 6 * Math.PI || Math.abs(after.rx) > 6 * Math.PI || Math.abs(after.rz) > 6 * Math.PI) {
+      items.push({ title: '弧度数值失控了', kind: 'warn', body:
+        'rotation 的数值是弧度：Math.PI ≈ 3.14 就是半圈（180°）。你设的值相当于原地转了很多圈——不是错误，但很难直观理解。先用 Math.PI / 2（90°）试试，建立角度和弧度的对应感。' });
+    }
+    return items;
+  }
+
+  function errorExplain(e) {
+    var name = (e && e.name) || 'Error';
+    var msg = (e && e.message) || String(e);
+    if (name === 'ReferenceError') {
+      var m = msg.match(/(\w+) is not defined/);
+      var who = m ? m[1] : '某个变量';
+      return '「' + who + '」不存在——大概是拼写错误。当前可用的对象：cube（立方体）、scene（场景）、camera（相机）、THREE（Three.js 库）。';
+    }
+    if (name === 'TypeError') {
+      return '类型错误：' + escapeHtml(msg) + '。常见原因：给数字属性赋了字符串（3 而不是 "3"），或者访问了不存在的属性。';
+    }
+    if (name === 'SyntaxError') {
+      return '语法错误：' + escapeHtml(msg) + '。JavaScript 对语法很严格，检查括号、分号和引号是否配对。';
+    }
+    return escapeHtml(name + '：' + msg) + '。把出错的代码和这条信息对照，通常能定位问题。';
+  }
+
+  function renderOutcome(before, after, result, prediction, isFirst) {
+    var html = '';
+    if (!isFirst) {
+      html += '<div class="ex-block">';
+      if (prediction) {
+        html += '<div class="ex-label">你的预测</div><div class="ex-quote">' + escapeHtml(prediction) + '</div>';
+      }
+      html += '<div class="ex-label">' + (prediction ? '实际发生' : '本次变化') + '</div>';
+      html += '<div class="ex-diff">' + diffText(before, after) + '</div>';
+      if (prediction) html += '<div class="ex-nudge">对比一下：你的预测和实际发生，差在哪里？</div>';
+      html += '</div>';
+    }
+    var items = buildExplanations(getCode(), after, result);
+    for (var i = 0; i < items.length; i++) html += itemHtml(items[i]);
+    $('explain-body').innerHTML = html;
+  }
+
+  function toast(msg) {
+    var el = $('toast');
+    el.textContent = msg;
+    el.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.hidden = true; }, 4500);
+  }
+
+  function bindUI() {
+    $('predict-ok').onclick = submitPrediction;
+    $('predict-skip').onclick = skipPrediction;
+    $('predict-input').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') submitPrediction();
+    });
+    $('predict-mode').addEventListener('change', function () {
+      predictionMode = this.checked;
+      if (!predictionMode && barVisible) {
+        barVisible = false;
+        $('predict-bar').hidden = true;
+        runNow();
+      }
+    });
+    $('local-axes').addEventListener('change', function () {
+      if (localAxes) localAxes.visible = this.checked;
+    });
+    $('reset-btn').addEventListener('click', function () {
+      cube.position.set(0, 0, 0);
+      cube.rotation.set(0, 0, 0);
+      cube.scale.set(1, 1, 1);
+      toast('场景已重置为初始状态。你的代码仍然保留——再改动任意一行，它会重新生效。');
+    });
+  }
+
+  function init() {
+    if (!window.THREE) {
+      $('scene-fallback').hidden = false;
+    } else {
+      try { initScene(); }
+      catch (err) {
+        $('scene-fallback').hidden = false;
+        $('scene-fallback').textContent = 'WebGL 初始化失败：' + err.message;
+      }
+    }
+    initEditor();
+    bindUI();
+    if (window.THREE && cube) {
+      var saved = null;
+      try { saved = Store.getProgress(EXPERIMENT_ID); } catch (e) { }
+      var restored = false;
+      if (saved && saved.code && saved.code.trim() && saved.code !== getCode()) {
+        restoring = true;
+        setCode(saved.code);
+        restoring = false;
+        restored = true;
+      }
+      var before = snapshot();
+      var result = runUserCode(getCode());
+      renderOutcome(before, snapshot(), result, '', true);
+      persist(result, before, snapshot(), '');
+      if (restored) {
+        var when = '';
+        try { when = hhmm(new Date(saved.updated_at)); } catch (e) { }
+        toast('已恢复上次的进度' + (when ? '（' + when + ' 保存）' : '') + '，本地共记录 ' + Store.trialCount() + ' 次实验。');
+      }
+    }
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
